@@ -6,7 +6,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const request = require('request');
 const path = require('path');
-var messengerButton = "<html><head><title>Facebook Messenger Bot</title></head><body><h1>Facebook Messenger Bot</h1>This is a bot based on Messenger Platform QuickStart. For more details, see their <a href=\"https://developers.facebook.com/docs/messenger-platform/guides/quick-start\">docs</a>.<script src=\"https://button.glitch.me/button.js\" data-style=\"glitch\"></script><div class=\"glitchButton\" style=\"position:fixed;top:20px;right:20px;\"></div></body></html>";
+var messengerButton = "<html><head><title>Coin Tracker</title></head><body><h1>Coin Tracker</h1>This is a bot based on Messenger Platform for tracking cryptocurrency. For more details, see their <a href=\"https://developers.facebook.com/docs/messenger-platform/guides/quick-start\">docs</a>.<script src=\"https://button.glitch.me/button.js\" data-style=\"glitch\"></script><div class=\"glitchButton\" style=\"position:fixed;top:20px;right:20px;\"></div></body></html>";
 
 // The rest of the code implements the routes for our Express server.
 let app = express();
@@ -75,42 +75,32 @@ function receivedMessage(event) {
   var recipientID = event.recipient.id;
   var timeOfMessage = event.timestamp;
   var message = event.message;
-  var payload = false;
-  if ("quick_reply" in message) {
-    if ("payload" in message.quick_reply ) payload = message.quick_reply.payload;
-  }
+
   console.log("Received message for user %d and page %d at %d with message:", 
     senderID, recipientID, timeOfMessage);
   console.log(JSON.stringify(message));
 
   var messageId = message.mid;
-  
+
   var messageText = message.text;
   var messageAttachments = message.attachments;
-  
-  if (messageText && !payload) {
+
+  if (messageText) {
     // If we receive a text message, check to see if it matches a keyword
     // and send back the template example. Otherwise, just echo the text we received.
-    
-    // If text message is a phone number
-    if (/^\+\d{4,20}$/.test(messageText)) {
-      return sendPhoneNumberLink(senderID, messageText);
+    switch (messageText) {
+      case (messageText.match(/^![a-z]{3}$/) || {}).input:
+        sendAPIData(senderID, messageText);
+        break;
+      case 'generic':
+        sendGenericMessage(senderID);
+        break;
+
+      default:
+        sendTextMessage(senderID, messageText);
     }
-    // Send default greating message
-    return sendGreetingMessage(senderID);
-  } 
-  if(payload) {
-    switch(payload) {
-      case 'SUPPORT_ANDROID':
-        sendSupportLink(senderID, 'https://support.truecaller.com/hc/en-us/categories/201513109-Android', 'Android');
-        break;
-      case 'SUPPORT_IPHONE':
-        sendSupportLink(senderID, 'https://support.truecaller.com/hc/en-us/categories/201513229-iPhone', 'iPhone');
-        break;
-      case 'SUPPORT_WINDOWS_PHONE':
-        sendSupportLink(senderID, 'https://support.truecaller.com/hc/en-us/categories/201539765-Windows-Phone', 'Windows Phone');
-        break;
-    }
+  } else if (messageAttachments) {
+    sendTextMessage(senderID, "Message with attachment received");
   }
 }
 
@@ -125,22 +115,34 @@ function receivedPostback(event) {
 
   console.log("Received postback for user %d and page %d with payload '%s' " + 
     "at %d", senderID, recipientID, payload, timeOfPostback);
-  
-  switch (payload) {
-    case 'SEARCH_A_NUMBER':
-      sendTextMessage(senderID, "Please write the number in this format with country code then number: +18447078506");
-      break;
-    case 'HELP_WITH_TRUECALLER':
-      sendSupportTopics(senderID);
-      break;
-    default:
-      sendTextMessage(senderID, "I'm sorry. We didn't understand that action.");
-  }
+
+  // When a postback is called, we'll send a message back to the sender to 
+  // let them know it was successful
+  sendTextMessage(senderID, "Postback called");
 }
 
 //////////////////////////
 // Sending helpers
 //////////////////////////
+function sendAPIData(recipientId, messageText) {
+  request({url: 'https://api.cryptonator.com/api/full/'+messageText.substr(1)+'-usd', json: true}, function(err, res, json) {
+    if (err) {
+      throw err;
+    }
+      var messageData = {
+      recipient: {
+        id: recipientId
+      },
+      message: {
+        text: JSON.stringify(json.ticker.price)
+      }
+    };
+
+    callSendAPI(messageData);
+  });
+}
+
+
 function sendTextMessage(recipientId, messageText) {
   var messageData = {
     recipient: {
@@ -154,131 +156,51 @@ function sendTextMessage(recipientId, messageText) {
   callSendAPI(messageData);
 }
 
-function sendPhoneNumberLink(recipientId, phoneNumber) {
+function sendGenericMessage(recipientId) {
   var messageData = {
     recipient: {
       id: recipientId
     },
     message: {
-      "attachment":{
-        "type":"template",
-        "payload":{
-          "template_type":"button",
-          "text": "We have a potential match!\r\nPlease visit our website for details",
-          "buttons":[
-            {
-              "type":"web_url",
-              "title": `See details of ${phoneNumber} on truecaller.com`,
-              "url": `https://www.truecaller.com/search/in/${phoneNumber}`
-            }
-          ]
+      attachment: {
+        type: "template",
+        payload: {
+          template_type: "generic",
+          elements: [{
+            title: "rift",
+            subtitle: "Next-generation virtual reality",
+            item_url: "https://www.oculus.com/en-us/rift/",               
+            image_url: "http://messengerdemo.parseapp.com/img/rift.png",
+            buttons: [{
+              type: "web_url",
+              url: "https://www.oculus.com/en-us/rift/",
+              title: "Open Web URL"
+            }, {
+              type: "postback",
+              title: "Call Postback",
+              payload: "Payload for first bubble",
+            }],
+          }, {
+            title: "touch",
+            subtitle: "Your Hands, Now in VR",
+            item_url: "https://www.oculus.com/en-us/touch/",               
+            image_url: "http://messengerdemo.parseapp.com/img/touch.png",
+            buttons: [{
+              type: "web_url",
+              url: "https://www.oculus.com/en-us/touch/",
+              title: "Open Web URL"
+            }, {
+              type: "postback",
+              title: "Call Postback",
+              payload: "Payload for second bubble",
+            }]
+          }]
         }
       }
     }
-  }
-  
+  };  
+
   callSendAPI(messageData);
-}
-
-function sendSupportTopics(recipientId) {
-  var messageData = {
-    recipient: {
-      id: recipientId
-    },
-    message: {
-      "text":"Pick your phone type:",
-      "quick_replies":[
-        {
-          "content_type":"text",
-          "title":"Android",
-          "payload":"SUPPORT_ANDROID"
-        },
-        {
-          "content_type":"text",
-          "title":"iPhone",
-          "payload":"SUPPORT_IPHONE"
-        },
-        {
-          "content_type":"text",
-          "title":"Windows Phone",
-          "payload":"SUPPORT_WINDOWS_PHONE"
-        }
-      ]
-    }
-  }
-  
-  callSendAPI(messageData);
-}
-
-function sendSupportLink(recipientId, link, topic) {
-  var messageData = {
-    recipient: {
-      id: recipientId
-    },
-    message: {
-      "attachment":{
-        "type":"template",
-        "payload":{
-          "template_type":"button",
-          "text": `For help with ${topic}, please click the link below.`,
-          "buttons":[
-            {
-              "type":"web_url",
-              "title": `Help with ${topic}`,
-              "url": link
-            }
-          ]
-        }
-      }
-    }
-  }
-  
-  callSendAPI(messageData);
-}
-
-function sendGreetingMessage(recipientId) {
-  getProfile(recipientId, function(firstName) {
-    var messageData = {
-      recipient: {
-        id: recipientId
-      },
-      message: {
-        "attachment":{
-          "type":"template",
-          "payload":{
-            "template_type":"button",
-            "text": `Hello ${firstName}!\r\n\r\nThanks for writing in. We are here to help with your Truecaller questions.\r\n\r\nWhat are you looking for?`,
-            "buttons":[
-              {
-                "type":"postback",
-                "title":"Search a number",
-                "payload":"SEARCH_A_NUMBER"
-              },
-              {
-                "type":"postback",
-                "title":"Help with Truecaller",
-                "payload":"HELP_WITH_TRUECALLER"
-              }
-            ]
-          }
-        }
-      }
-    }
-    callSendAPI(messageData);
-  })
-  
-}
-
-function getProfile(id, cb) {
-  request({
-     uri: 'https://graph.facebook.com/v2.6/' + id,
-     qs: { access_token: process.env.PAGE_ACCESS_TOKEN },
-     method: 'GET'
-    }, 
-    function (err, response, body) {
-      cb(JSON.parse(body).first_name);
-    }
-  )
 }
 
 function callSendAPI(messageData) {

@@ -6,7 +6,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const request = require('request');
 const path = require('path');
-var messengerButton = "<html><head><title>Facebook Messenger Bot</title></head><body><h1>Facebook Messenger Bot</h1>This is a bot based on Messenger Platform QuickStart. For more details, see their <a href=\"https://developers.facebook.com/docs/messenger-platform/guides/quick-start\">docs</a>.<script src=\"https://button.glitch.me/button.js\" data-style=\"glitch\"></script><div class=\"glitchButton\" style=\"position:fixed;top:20px;right:20px;\"></div></body></html>";
+var messengerButton = "<html><head><title>Coin Tracker</title></head><body><h1>Coin Tracker</h1>This is a bot based on Messenger Platform for tracking cryptocurrency. For more details, see their <a href=\"https://developers.facebook.com/docs/messenger-platform/guides/quick-start\">docs</a>.<script src=\"https://button.glitch.me/button.js\" data-style=\"glitch\"></script><div class=\"glitchButton\" style=\"position:fixed;top:20px;right:20px;\"></div></body></html>";
 
 // The rest of the code implements the routes for our Express server.
 let app = express();
@@ -85,14 +85,6 @@ function receivedMessage(event) {
   var messageText = message.text;
   var messageAttachments = message.attachments;
 
-  if(messageText.length==4 && messageText.startsWith("!"))
-    {
-      var res;
-      var url = "https://api.cryptonator.com/api/full/"+messageText.substr(1)+"-usd";
-      console.log(url);
-      return;
-    }
-  
   if (messageText) {
     // If we receive a text message, check to see if it matches a keyword
     // and send back the template example. Otherwise, just echo the text we received.
@@ -129,7 +121,6 @@ function receivedPostback(event) {
 //////////////////////////
 // Sending helpers
 //////////////////////////
-
 function sendTextMessage(recipientId, messageText) {
   var messageData = {
     recipient: {
